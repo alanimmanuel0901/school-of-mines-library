@@ -311,6 +311,34 @@ def admin_students():
     students = Student.query.all()
     return render_template('admin_students.html', students=students)
 
+@app.route('/admin/delete_student/<int:student_id>', methods=['POST'])
+@admin_required
+def delete_student(student_id):
+    student = Student.query.get_or_404(student_id)
+    
+    # Safety check: Check if student has any borrowed books that haven't been returned
+    active_issues = IssuedBook.query.filter_by(student_id=student_id, returned=False).count()
+    
+    if active_issues > 0:
+        flash(f'Cannot delete student. {active_issues} book(s) must be returned first.', 'error')
+        return redirect(url_for('admin_students'))
+    
+    # Delete associated reservations
+    Reservation.query.filter_by(student_id=student_id).delete()
+    
+    # Delete all issued books (returned ones can be deleted as history)
+    IssuedBook.query.filter_by(student_id=student_id).delete()
+    
+    # Delete renewal requests
+    RenewalRequest.query.filter_by(student_id=student_id).delete()
+    
+    # Delete the student
+    db.session.delete(student)
+    db.session.commit()
+    
+    flash('Student deleted successfully!', 'success')
+    return redirect(url_for('admin_students'))
+
 @app.route('/admin/approvals')
 @admin_required
 def admin_approvals():

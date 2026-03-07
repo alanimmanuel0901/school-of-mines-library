@@ -27,6 +27,7 @@
                 <th>Phone</th>
                 <th>Registered On</th>
                 <th>Books Borrowed</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -49,6 +50,16 @@
                     <span class="badge badge-{{ 'success' if active_books == 0 else 'warning' }}">
                         {{ active_books }} active
                     </span>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <form action="{{ url_for('delete_student', student_id=student.id) }}" method="POST" 
+                              onsubmit="return confirm('Are you sure you want to delete this student? This action cannot be undone.');">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
