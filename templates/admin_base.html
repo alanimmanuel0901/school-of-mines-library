@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin - School of Mines Library{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="{{ url_for('index') }}" class="navbar-brand">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="navbar-logo">
+            <span>School of Mines Library</span>
+        </a>
+        <ul class="navbar-nav">
+            <li><a href="{{ url_for('index') }}">Home</a></li>
+            <li><a href="{{ url_for('book_search') }}">Browse Books</a></li>
+            <li>
+                <span style="color: var(--text-secondary);">
+                    <i class="fas fa-user-shield"></i> {{ session.get('admin_username', 'Admin') }}
+                </span>
+            </li>
+            <li><a href="{{ url_for('admin_logout') }}" class="btn btn-danger btn-sm">Logout</a></li>
+        </ul>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div style="padding: 1rem 2rem;">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'error' if category == 'error' else category }} fade-in">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' if category == 'error' else 'info-circle' }}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{{ url_for('admin_dashboard') }}" class="{{ 'active' if request.endpoint == 'admin_dashboard' else '' }}">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="sidebar-header">Books Management</div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{{ url_for('add_book') }}" class="{{ 'active' if request.endpoint == 'add_book' else '' }}">
+                        <i class="fas fa-plus-circle"></i> Add Book
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('admin_books') }}" class="{{ 'active' if request.endpoint == 'admin_books' else '' }}">
+                        <i class="fas fa-books"></i> All Books
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-header">Students</div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{{ url_for('admin_students') }}" class="{{ 'active' if request.endpoint == 'admin_students' else '' }}">
+                        <i class="fas fa-user-graduate"></i> All Students
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-header">Circulation</div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{{ url_for('admin_approvals') }}" class="{{ 'active' if request.endpoint == 'admin_approvals' else '' }}">
+                        <i class="fas fa-clipboard-check"></i> Approvals
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('admin_renewals') }}" class="{{ 'active' if request.endpoint == 'admin_renewals' else '' }}">
+                        <i class="fas fa-redo"></i> Renewals
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('admin_issued_books') }}" class="{{ 'active' if request.endpoint == 'admin_issued_books' else '' }}">
+                        <i class="fas fa-exchange-alt"></i> Issued Books
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            {% block admin_content %}{% endblock %}
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

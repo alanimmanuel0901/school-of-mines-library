@@ -1,0 +1,184 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}Add Book - School of Mines Library{% endblock %}
+
+{% block admin_content %}
+<div class="page-header">
+    <h1><i class="fas fa-plus-circle"></i> Add New Book</h1>
+    <p>Add a new book to the library collection</p>
+</div>
+
+<div class="grid grid-2">
+    <!-- Add Book Form -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Book Information</h3>
+        </div>
+        <form method="POST" action="{{ url_for('add_book') }}" enctype="multipart/form-data" id="addBookForm">
+            <div class="form-group">
+                <label class="form-label">Book Title *</label>
+                <input type="text" name="title" id="bookTitle" class="form-control" placeholder="Enter book title" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Author Name *</label>
+                <input type="text" name="author" id="bookAuthor" class="form-control" placeholder="Enter author name" required>
+            </div>
+
+            <!-- Author Details Section -->
+            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem;">
+                <h4 style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.875rem;">
+                    <i class="fas fa-user-edit"></i> Author Details
+                </h4>
+                <div class="grid grid-2" style="gap: 1rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Author Born Year</label>
+                        <input type="number" name="author_born_year" class="form-control" placeholder="e.g., 1643" min="1" max="2100">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Author Died Year <span style="color: var(--text-muted);">(optional)</span></label>
+                        <input type="number" name="author_died_year" class="form-control" placeholder="Leave empty if alive" min="1" max="2100">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
+                    <label class="form-label">About Author</label>
+                    <textarea name="author_description" class="form-control" rows="3" placeholder="Brief description about the author..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Book Published Year</label>
+                <input type="number" name="book_published_year" class="form-control" placeholder="e.g., 1687" min="1" max="2100">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">ISBN / Barcode *</label>
+                <div class="flex gap-2">
+                    <input type="text" name="isbn" id="bookIsbn" class="form-control" placeholder="Enter ISBN or scan barcode" required>
+                    <button type="button" class="btn btn-secondary" onclick="startScanner()">
+                        <i class="fas fa-barcode"></i> Scan
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Branch Category *</label>
+                <select name="branch_category" class="form-control" required>
+                    <option value="">Select Category</option>
+                    {% for branch in branches %}
+                        <option value="{{ branch }}">{{ branch }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Total Copies</label>
+                <input type="number" name="total_copies" class="form-control" value="1" min="1" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Book Cover</label>
+                <div class="file-upload" onclick="document.getElementById('coverInput').click()">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Click to upload book cover image</p>
+                    <p style="font-size: 0.75rem; margin-top: 0.5rem;">PNG, JPG, JPEG up to 16MB</p>
+                    <input type="file" name="cover" id="coverInput" accept="image/*" onchange="previewImage(this)">
+                </div>
+                <img id="imagePreview" class="image-preview" alt="Preview">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <i class="fas fa-plus"></i> Add Book
+            </button>
+        </form>
+    </div>
+
+    <!-- Barcode Scanner & Info -->
+    <div>
+        <!-- Scanner Container -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-barcode"></i> Barcode Scanner</h3>
+                <button type="button" class="btn btn-danger btn-sm" onclick="stopScanner()" id="stopScannerBtn" style="display: none;">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+            </div>
+            <div class="scanner-container" id="scannerContainer" style="display: none;">
+                <video id="scannerVideo" playsinline></video>
+                <p class="mt-2" style="color: var(--text-secondary);">Point camera at barcode</p>
+            </div>
+            <div id="scannerPlaceholder" class="empty-state">
+                <i class="fas fa-qrcode"></i>
+                <h3>Scanner Ready</h3>
+                <p>Click "Scan" button to start scanning</p>
+            </div>
+        </div>
+
+        <!-- Quick Tips -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-lightbulb"></i> Quick Tips</h3>
+            </div>
+            <ul style="color: var(--text-secondary); padding-left: 1.25rem;">
+                <li style="margin-bottom: 0.5rem;">ISBN is typically found on the back cover or copyright page</li>
+                <li style="margin-bottom: 0.5rem;">Use the barcode scanner for quick ISBN entry</li>
+                <li style="margin-bottom: 0.5rem;">Book covers help students identify books easily</li>
+                <li style="margin-bottom: 0.5rem;">Choose the appropriate branch category for better organization</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/@zxing/library@latest"></script>
+<script>
+let codeReader = null;
+
+function startScanner() {
+    document.getElementById('scannerContainer').style.display = 'block';
+    document.getElementById('scannerPlaceholder').style.display = 'none';
+    document.getElementById('stopScannerBtn').style.display = 'inline-flex';
+    
+    codeReader = new ZXing.BrowserBarcodeReader();
+    
+    codeReader.decodeFromVideoDevice(null, 'scannerVideo', (result, err) => {
+        if (result) {
+            document.getElementById('bookIsbn').value = result.text;
+            stopScanner();
+            
+            // Try to fetch book info by ISBN
+            fetch(`/api/book/isbn/${result.text}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.found) {
+                        alert('This book already exists in the library!');
+                    }
+                });
+        }
+    });
+}
+
+function stopScanner() {
+    if (codeReader) {
+        codeReader.reset();
+        codeReader = null;
+    }
+    document.getElementById('scannerContainer').style.display = 'none';
+    document.getElementById('scannerPlaceholder').style.display = 'block';
+    document.getElementById('stopScannerBtn').style.display = 'none';
+}
+
+function previewImage(input) {
+    const preview = document.getElementById('imagePreview');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.classList.add('show');
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %}

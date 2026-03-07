@@ -1,0 +1,90 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}Students - School of Mines Library{% endblock %}
+
+{% block admin_content %}
+<div class="page-header">
+    <h1><i class="fas fa-user-graduate"></i> Registered Students</h1>
+    <p>View all registered students</p>
+</div>
+
+<!-- Search -->
+<div class="search-bar">
+    <div class="search-input">
+        <i class="fas fa-search"></i>
+        <input type="text" id="searchInput" placeholder="Search students..." onkeyup="filterStudents()">
+    </div>
+</div>
+
+{% if students %}
+<div class="table-container">
+    <table class="table" id="studentsTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Register Number</th>
+                <th>Branch</th>
+                <th>Phone</th>
+                <th>Registered On</th>
+                <th>Books Borrowed</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+            <tr>
+                <td>
+                    <div class="flex gap-2" style="align-items: center;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center;">
+                            {{ student.full_name[0].upper() }}
+                        </div>
+                        <strong>{{ student.full_name }}</strong>
+                    </div>
+                </td>
+                <td><code>{{ student.register_number }}</code></td>
+                <td><span class="badge badge-info">{{ student.branch }}</span></td>
+                <td>{{ student.phone_number }}</td>
+                <td>{{ student.created_at.strftime('%b %d, %Y') }}</td>
+                <td>
+                    {% set active_books = student.issued_books|selectattr('returned', 'false')|list|length %}
+                    <span class="badge badge-{{ 'success' if active_books == 0 else 'warning' }}">
+                        {{ active_books }} active
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <i class="fas fa-users"></i>
+        <h3>No students registered</h3>
+        <p>Students will appear here once they register</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterStudents() {
+    const input = document.getElementById('searchInput');
+    const filter = input.value.toLowerCase();
+    const table = document.getElementById('studentsTable');
+    const rows = table.getElementsByTagName('tr');
+
+    for (let i = 1; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName('td');
+        let found = false;
+        for (let j = 0; j < cells.length; j++) {
+            if (cells[j].textContent.toLowerCase().indexOf(filter) > -1) {
+                found = true;
+                break;
+            }
+        }
+        rows[i].style.display = found ? '' : 'none';
+    }
+}
+</script>
+{% endblock %}

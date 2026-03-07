@@ -1,0 +1,232 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}Renewal Requests - School of Mines Library{% endblock %}
+
+{% block admin_content %}
+<div class="page-header">
+    <h1><i class="fas fa-redo"></i> Book Renewal Requests</h1>
+    <p>Review and manage student book renewal requests</p>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+    <button class="tab active" onclick="showTab('pending')">
+        Pending <span class="badge badge-warning" style="margin-left: 0.5rem;">{{ pending|length }}</span>
+    </button>
+    <button class="tab" onclick="showTab('approved')">Approved</button>
+    <button class="tab" onclick="showTab('rejected')">Rejected</button>
+</div>
+
+<!-- Pending Tab -->
+<div id="pending-tab" class="tab-content">
+    {% if pending %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Book</th>
+                    <th>Current Due Date</th>
+                    <th>Days Overdue</th>
+                    <th>Fine (₹)</th>
+                    <th>Reason</th>
+                    <th>Request Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for renewal in pending %}
+                {% set issued = renewal.issued_book %}
+                {% set days_overdue = issued.days_overdue() %}
+                {% set fine = issued.calculate_fine() %}
+                <tr>
+                    <td>
+                        <div>
+                            <strong>{{ renewal.student.full_name }}</strong>
+                            <div style="font-size: 0.875rem; color: var(--text-muted);">
+                                {{ renewal.student.register_number }}
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div>
+                            <strong>{{ issued.book.title }}</strong>
+                            <div style="font-size: 0.875rem; color: var(--text-muted);">
+                                by {{ issued.book.author }}
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ issued.due_date.strftime('%b %d, %Y') if issued.due_date else 'N/A' }}</td>
+                    <td>
+                        {% if days_overdue > 0 %}
+                            <span style="color: var(--danger); font-weight: bold;">{{ days_overdue }} days</span>
+                        {% else %}
+                            <span style="color: var(--success);">0 days</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if fine > 0 %}
+                            <span style="color: var(--danger); font-weight: bold;">₹{{ fine }}</span>
+                        {% else %}
+                            <span style="color: var(--success);">₹0</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ renewal.reason }}">
+                            {{ renewal.reason }}
+                        </div>
+                    </td>
+                    <td>{{ renewal.request_date.strftime('%b %d, %Y at %H:%M') }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <form action="{{ url_for('approve_renewal', renewal_id=renewal.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    <i class="fas fa-check"></i> Approve
+                                </button>
+                            </form>
+                            <form action="{{ url_for('reject_renewal', renewal_id=renewal.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-times"></i> Reject
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="empty-state">
+            <i class="fas fa-check-circle"></i>
+            <h3>No pending renewal requests</h3>
+            <p>All caught up! No renewal requests waiting for approval.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Approved Tab -->
+<div id="approved-tab" class="tab-content" style="display: none;">
+    {% if approved %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Book</th>
+                    <th>Reason</th>
+                    <th>Request Date</th>
+                    <th>Approved On</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for renewal in approved %}
+                <tr>
+                    <td><strong>{{ renewal.student.full_name }}</strong></td>
+                    <td>{{ renewal.issued_book.book.title }}</td>
+                    <td>
+                        <div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ renewal.reason }}">
+                            {{ renewal.reason }}
+                        </div>
+                    </td>
+                    <td>{{ renewal.request_date.strftime('%b %d, %Y') }}</td>
+                    <td>{{ renewal.processed_date.strftime('%b %d, %Y') if renewal.processed_date else 'N/A' }}</td>
+                    <td><span class="badge badge-success">Approved (+7 days)</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="empty-state">
+            <i class="fas fa-history"></i>
+            <h3>No approved requests</h3>
+            <p>Approved renewal requests will appear here</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Rejected Tab -->
+<div id="rejected-tab" class="tab-content" style="display: none;">
+    {% if rejected %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Book</th>
+                    <th>Reason</th>
+                    <th>Request Date</th>
+                    <th>Rejected On</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for renewal in rejected %}
+                <tr>
+                    <td><strong>{{ renewal.student.full_name }}</strong></td>
+                    <td>{{ renewal.issued_book.book.title }}</td>
+                    <td>
+                        <div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ renewal.reason }}">
+                            {{ renewal.reason }}
+                        </div>
+                    </td>
+                    <td>{{ renewal.request_date.strftime('%b %d, %Y') }}</td>
+                    <td>{{ renewal.processed_date.strftime('%b %d, %Y') if renewal.processed_date else 'N/A' }}</td>
+                    <td><span class="badge badge-danger">Rejected</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="empty-state">
+            <i class="fas fa-ban"></i>
+            <h3>No rejected requests</h3>
+            <p>Rejected renewal requests will appear here</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Info Card -->
+<div class="card mt-3">
+    <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-info-circle"></i> Renewal Policy</h3>
+    </div>
+    <ul style="color: var(--text-secondary); padding-left: 1.25rem;">
+        <li style="margin-bottom: 0.5rem;">Standard borrowing period: <strong>7 days</strong></li>
+        <li style="margin-bottom: 0.5rem;">Each renewal extends the due date by <strong>7 additional days</strong></li>
+        <li style="margin-bottom: 0.5rem;">Late return fine: <strong>₹5 per day</strong> after the due date</li>
+        <li style="margin-bottom: 0.5rem;">Students can request renewal even if the book is overdue</li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName + '-tab').style.display = 'block';
+    
+    // Add active class to clicked button
+    event.target.classList.add('active');
+}
+</script>
+{% endblock %}

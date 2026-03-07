@@ -1,0 +1,198 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}Edit Book - School of Mines Library{% endblock %}
+
+{% block admin_content %}
+<div class="page-header">
+    <h1><i class="fas fa-edit"></i> Edit Book</h1>
+    <p>Update book information in the library collection</p>
+</div>
+
+<div class="grid grid-2">
+    <!-- Edit Book Form -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Book Information</h3>
+        </div>
+        <form method="POST" action="{{ url_for('edit_book', book_id=book.id) }}" enctype="multipart/form-data" id="editBookForm">
+            <div class="form-group">
+                <label class="form-label">Book Title *</label>
+                <input type="text" name="title" id="bookTitle" class="form-control" value="{{ book.title }}" placeholder="Enter book title" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Author Name *</label>
+                <input type="text" name="author" id="bookAuthor" class="form-control" value="{{ book.author }}" placeholder="Enter author name" required>
+            </div>
+
+            <!-- Author Details Section -->
+            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem;">
+                <h4 style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.875rem;">
+                    <i class="fas fa-user-edit"></i> Author Details
+                </h4>
+                <div class="grid grid-2" style="gap: 1rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Author Born Year</label>
+                        <input type="number" name="author_born_year" class="form-control" value="{{ book.author_born_year if book.author_born_year else '' }}" placeholder="e.g., 1643" min="1" max="2100">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Author Died Year <span style="color: var(--text-muted);">(optional)</span></label>
+                        <input type="number" name="author_died_year" class="form-control" value="{{ book.author_died_year if book.author_died_year else '' }}" placeholder="Leave empty if alive" min="1" max="2100">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
+                    <label class="form-label">About Author</label>
+                    <textarea name="author_description" class="form-control" rows="3" placeholder="Brief description about the author...">{{ book.author_description if book.author_description else '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Book Published Year</label>
+                <input type="number" name="book_published_year" class="form-control" value="{{ book.book_published_year if book.book_published_year else '' }}" placeholder="e.g., 1687" min="1" max="2100">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">ISBN / Barcode *</label>
+                <div class="flex gap-2">
+                    <input type="text" name="isbn" id="bookIsbn" class="form-control" value="{{ book.isbn }}" placeholder="Enter ISBN or scan barcode" required>
+                    <button type="button" class="btn btn-secondary" onclick="startScanner()">
+                        <i class="fas fa-barcode"></i> Scan
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Branch Category *</label>
+                <select name="branch_category" class="form-control" required>
+                    <option value="">Select Category</option>
+                    {% for branch in branches %}
+                        <option value="{{ branch }}" {% if branch == book.branch_category %}selected{% endif %}>{{ branch }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Total Copies</label>
+                <input type="number" name="total_copies" class="form-control" value="{{ book.total_copies }}" min="1" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Book Cover</label>
+                <div class="file-upload" onclick="document.getElementById('coverInput').click()">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Click to upload new book cover image (optional)</p>
+                    <p style="font-size: 0.75rem; margin-top: 0.5rem;">PNG, JPG, JPEG up to 16MB</p>
+                    <input type="file" name="cover" id="coverInput" accept="image/*" onchange="previewImage(this)">
+                </div>
+                {% if book.cover_image and book.cover_image != 'default_book.png' %}
+                <div style="margin-top: 1rem;">
+                    <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">Current Cover:</p>
+                    <img src="{{ url_for('static', filename='uploads/covers/' + book.cover_image) }}" 
+                         alt="{{ book.title }}" 
+                         style="width: 100px; height: 140px; object-fit: cover; border-radius: var(--radius-sm);"
+                         onerror="this.src='https://via.placeholder.com/100x140/1a1a2e/6366f1?text=No+Cover'">
+                </div>
+                {% endif %}
+                <img id="imagePreview" class="image-preview" alt="Preview">
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary btn-block btn-lg">
+                    <i class="fas fa-save"></i> Update Book
+                </button>
+                <a href="{{ url_for('admin_books') }}" class="btn btn-secondary btn-lg">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Barcode Scanner & Info -->
+    <div>
+        <!-- Scanner Container -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-barcode"></i> Barcode Scanner</h3>
+                <button type="button" class="btn btn-danger btn-sm" onclick="stopScanner()" id="stopScannerBtn" style="display: none;">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+            </div>
+            <div class="scanner-container" id="scannerContainer" style="display: none;">
+                <video id="scannerVideo" playsinline></video>
+                <p class="mt-2" style="color: var(--text-secondary);">Point camera at barcode</p>
+            </div>
+            <div id="scannerPlaceholder" class="empty-state">
+                <i class="fas fa-qrcode"></i>
+                <h3>Scanner Ready</h3>
+                <p>Click "Scan" button to start scanning</p>
+            </div>
+        </div>
+
+        <!-- Quick Tips -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-lightbulb"></i> Quick Tips</h3>
+            </div>
+            <ul style="color: var(--text-secondary); padding-left: 1.25rem;">
+                <li style="margin-bottom: 0.5rem;">Be careful when changing ISBN - it's used for book identification</li>
+                <li style="margin-bottom: 0.5rem;">Use the barcode scanner for quick ISBN entry</li>
+                <li style="margin-bottom: 0.5rem;">Updating cover image will replace the existing one</li>
+                <li style="margin-bottom: 0.5rem;">Changes will be reflected immediately across the system</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/@zxing/library@latest"></script>
+<script>
+let codeReader = null;
+
+function startScanner() {
+    document.getElementById('scannerContainer').style.display = 'block';
+    document.getElementById('scannerPlaceholder').style.display = 'none';
+    document.getElementById('stopScannerBtn').style.display = 'inline-flex';
+    
+    codeReader = new ZXing.BrowserBarcodeReader();
+    
+    codeReader.decodeFromVideoDevice(null, 'scannerVideo', (result, err) => {
+        if (result) {
+            document.getElementById('bookIsbn').value = result.text;
+            stopScanner();
+            
+            // Check if ISBN already exists (different from current book)
+            fetch(`/api/book/isbn/${result.text}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.found && data.isbn !== '{{ book.isbn }}') {
+                        alert('This ISBN already exists for another book!');
+                    }
+                });
+        }
+    });
+}
+
+function stopScanner() {
+    if (codeReader) {
+        codeReader.reset();
+        codeReader = null;
+    }
+    document.getElementById('scannerContainer').style.display = 'none';
+    document.getElementById('scannerPlaceholder').style.display = 'block';
+    document.getElementById('stopScannerBtn').style.display = 'none';
+}
+
+function previewImage(input) {
+    const preview = document.getElementById('imagePreview');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.classList.add('show');
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %}

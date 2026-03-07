@@ -1,0 +1,165 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}Issued Books - School of Mines Library{% endblock %}
+
+{% block admin_content %}
+<div class="page-header">
+    <h1><i class="fas fa-exchange-alt"></i> Issued Books</h1>
+    <p>Manage book issues and returns</p>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+    <button class="tab active" onclick="showTab('issued')">
+        Currently Issued <span class="badge badge-warning" style="margin-left: 0.5rem;">{{ issued|length }}</span>
+    </button>
+    <button class="tab" onclick="showTab('returned')">Returned</button>
+</div>
+
+<!-- Currently Issued Tab -->
+<div id="issued-tab" class="tab-content">
+    {% if issued %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Book</th>
+                    <th>Issue Date</th>
+                    <th>Due Date</th>
+                    <th>Days Overdue</th>
+                    <th>Fine (₹)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for issue in issued %}
+                {% set days_overdue = issue.days_overdue() %}
+                {% set fine = issue.calculate_fine() %}
+                {% set is_overdue = issue.is_overdue() %}
+                <tr>
+                    <td>
+                        <div>
+                            <strong>{{ issue.student.full_name }}</strong>
+                            <div style="font-size: 0.875rem; color: var(--text-muted);">
+                                {{ issue.student.register_number }}
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div>
+                            <strong>{{ issue.book.title }}</strong>
+                            <div style="font-size: 0.875rem; color: var(--text-muted);">
+                                ISBN: {{ issue.book.isbn }}
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ issue.issue_date.strftime('%b %d, %Y') }}</td>
+                    <td>
+                        <span class="due-date {{ 'overdue' if is_overdue else '' }}">
+                            {{ issue.due_date.strftime('%b %d, %Y') if issue.due_date else 'N/A' }}
+                            {% if is_overdue %}
+                                <i class="fas fa-exclamation-triangle"></i>
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if days_overdue > 0 %}
+                            <span style="color: var(--danger); font-weight: bold;">{{ days_overdue }} days</span>
+                        {% else %}
+                            <span style="color: var(--success);">0 days</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if fine > 0 %}
+                            <span style="color: var(--danger); font-weight: bold;">₹{{ fine }}</span>
+                        {% else %}
+                            <span style="color: var(--success);">₹0</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if is_overdue %}
+                            <span class="badge badge-danger">Overdue</span>
+                        {% else %}
+                            <span class="badge badge-info">Active</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form action="{{ url_for('return_book', issue_id=issue.id) }}" method="POST">
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="fas fa-undo"></i> Return
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="empty-state">
+            <i class="fas fa-check-double"></i>
+            <h3>No books currently issued</h3>
+            <p>All books have been returned</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Returned Tab -->
+<div id="returned-tab" class="tab-content" style="display: none;">
+    {% if returned %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Book</th>
+                    <th>Issue Date</th>
+                    <th>Return Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for issue in returned %}
+                <tr>
+                    <td><strong>{{ issue.student.full_name }}</strong></td>
+                    <td>{{ issue.book.title }}</td>
+                    <td>{{ issue.issue_date.strftime('%b %d, %Y') }}</td>
+                    <td>{{ issue.return_date.strftime('%b %d, %Y') if issue.return_date else 'N/A' }}</td>
+                    <td><span class="badge badge-success">Returned</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="empty-state">
+            <i class="fas fa-history"></i>
+            <h3>No return history</h3>
+            <p>Returned books will appear here</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    
+    document.querySelectorAll('.tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    document.getElementById(tabName + '-tab').style.display = 'block';
+    event.target.classList.add('active');
+}
+</script>
+{% endblock %}

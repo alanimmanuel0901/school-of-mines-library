@@ -1,0 +1,188 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}Approvals - School of Mines Library{% endblock %}
+
+{% block admin_content %}
+<div class="page-header">
+    <h1><i class="fas fa-clipboard-check"></i> Book Request Approvals</h1>
+    <p>Review and manage student book reservation requests</p>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+    <button class="tab active" onclick="showTab('pending')">
+        Pending <span class="badge badge-warning" style="margin-left: 0.5rem;">{{ pending|length }}</span>
+    </button>
+    <button class="tab" onclick="showTab('approved')">Approved</button>
+    <button class="tab" onclick="showTab('rejected')">Rejected</button>
+</div>
+
+<!-- Pending Tab -->
+<div id="pending-tab" class="tab-content">
+    {% if pending %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Book</th>
+                    <th>Request Date</th>
+                    <th>Availability</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reservation in pending %}
+                <tr>
+                    <td>
+                        <div>
+                            <strong>{{ reservation.student.full_name }}</strong>
+                            <div style="font-size: 0.875rem; color: var(--text-muted);">
+                                {{ reservation.student.register_number }}
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div>
+                            <strong>{{ reservation.book.title }}</strong>
+                            <div style="font-size: 0.875rem; color: var(--text-muted);">
+                                by {{ reservation.book.author }}
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ reservation.request_date.strftime('%b %d, %Y at %H:%M') }}</td>
+                    <td>
+                        {% if reservation.book.available_copies > 0 %}
+                            <span class="badge badge-success">{{ reservation.book.available_copies }} available</span>
+                        {% else %}
+                            <span class="badge badge-danger">Not available</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <form action="{{ url_for('approve_reservation', reservation_id=reservation.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-success btn-sm" {{ 'disabled' if reservation.book.available_copies == 0 else '' }}>
+                                    <i class="fas fa-check"></i> Approve
+                                </button>
+                            </form>
+                            <form action="{{ url_for('reject_reservation', reservation_id=reservation.id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-times"></i> Reject
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="empty-state">
+            <i class="fas fa-check-circle"></i>
+            <h3>No pending requests</h3>
+            <p>All caught up! No reservation requests waiting for approval.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Approved Tab -->
+<div id="approved-tab" class="tab-content" style="display: none;">
+    {% if approved %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Book</th>
+                    <th>Request Date</th>
+                    <th>Approved On</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reservation in approved %}
+                <tr>
+                    <td><strong>{{ reservation.student.full_name }}</strong></td>
+                    <td>{{ reservation.book.title }}</td>
+                    <td>{{ reservation.request_date.strftime('%b %d, %Y') }}</td>
+                    <td>{{ reservation.processed_date.strftime('%b %d, %Y') if reservation.processed_date else 'N/A' }}</td>
+                    <td><span class="badge badge-success">Approved</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="empty-state">
+            <i class="fas fa-history"></i>
+            <h3>No approved requests</h3>
+            <p>Approved requests will appear here</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Rejected Tab -->
+<div id="rejected-tab" class="tab-content" style="display: none;">
+    {% if rejected %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Book</th>
+                    <th>Request Date</th>
+                    <th>Rejected On</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reservation in rejected %}
+                <tr>
+                    <td><strong>{{ reservation.student.full_name }}</strong></td>
+                    <td>{{ reservation.book.title }}</td>
+                    <td>{{ reservation.request_date.strftime('%b %d, %Y') }}</td>
+                    <td>{{ reservation.processed_date.strftime('%b %d, %Y') if reservation.processed_date else 'N/A' }}</td>
+                    <td><span class="badge badge-danger">Rejected</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="empty-state">
+            <i class="fas fa-ban"></i>
+            <h3>No rejected requests</h3>
+            <p>Rejected requests will appear here</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName + '-tab').style.display = 'block';
+    
+    // Add active class to clicked button
+    event.target.classList.add('active');
+}
+</script>
+{% endblock %}

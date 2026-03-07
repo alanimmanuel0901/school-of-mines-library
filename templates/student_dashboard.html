@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+
+{% block title %}My Dashboard - School of Mines Library{% endblock %}
+
+{% block content %}
+<main style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+    <!-- Welcome Message -->
+    <div class="card mb-3" style="background: var(--accent-gradient); padding: 1rem 1.5rem;">
+        <h2 style="margin: 0; font-size: 1.25rem;">
+            <i class="fas fa-hand-wave"></i> Welcome, {{ session.get('student_name', student.full_name) }}
+        </h2>
+    </div>
+
+    <div class="page-header">
+        <h1>My Dashboard</h1>
+        <p>Manage your library activities from here</p>
+    </div>
+
+    <!-- Student Info Card -->
+    <div class="grid grid-3 mb-4">
+        <div class="card">
+            <div class="flex gap-2" style="align-items: center;">
+                <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold;">
+                    {{ student.full_name[0].upper() }}
+                </div>
+                <div>
+                    <h3>{{ student.full_name }}</h3>
+                    <p style="color: var(--text-secondary);">{{ student.branch }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon borrowed">
+                <i class="fas fa-book-reader"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ issued_books|length }}</h3>
+                <p>Books Borrowed</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon pending">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ reservations|selectattr('status', 'equalto', 'pending')|list|length }}</h3>
+                <p>Pending Requests</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Currently Borrowed Books with Fine Info -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-book"></i> Currently Borrowed Books</h3>
+        </div>
+        {% if issued_books %}
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Book</th>
+                            <th>Issue Date</th>
+                            <th>Return Date</th>
+                            <th>Status</th>
+                            <th>Days Overdue</th>
+                            <th>Fine (₹)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for issue in issued_books %}
+                        {% set days_overdue = issue.days_overdue() %}
+                        {% set fine = issue.calculate_fine() %}
+                        {% set is_overdue = issue.is_overdue() %}
+                        <tr>
+                            <td>
+                                <div class="flex gap-2" style="align-items: center;">
+                                    <img src="{{ url_for('static', filename='uploads/covers/' + issue.book.cover_image) }}" 
+                                         alt="{{ issue.book.title }}"
+                                         style="width: 40px; height: 55px; object-fit: cover; border-radius: 4px;"
+                                         onerror="this.src='https://via.placeholder.com/40x55/1a1a2e/6366f1?text=No+Cover'">
+                                    <div>
+                                        <strong>{{ issue.book.title }}</strong>
+                                        <p style="font-size: 0.75rem; color: var(--text-muted);">{{ issue.book.author }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ issue.issue_date.strftime('%b %d, %Y') }}</td>
+                            <td>{{ issue.due_date.strftime('%b %d, %Y') if issue.due_date else 'N/A' }}</td>
+                            <td>
+                                {% if is_overdue %}
+                                    <span class="badge badge-danger">
+                                        <i class="fas fa-exclamation-triangle"></i> Overdue
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-success">Active</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if days_overdue > 0 %}
+                                    <span style="color: var(--danger); font-weight: bold;">{{ days_overdue }} days</span>
+                                {% else %}
+                                    <span style="color: var(--success);">0 days</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if fine > 0 %}
+                                    <span style="color: var(--danger); font-weight: bold;">₹{{ fine }}</span>
+                                {% else %}
+                                    <span style="color: var(--success);">₹0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <!-- Check if there's a pending renewal -->
+                                {% set has_pending = false %}
+                                {% for renewal in renewal_requests %}
+                                    {% if renewal.issued_book_id == issue.id and renewal.status == 'pending' %}
+                                        {% set has_pending = true %}
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if has_pending %}
+                                    <span class="badge badge-warning">Renewal Pending</span>
+                                {% else %}
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="showRenewModal({{ issue.id }}, '{{ issue.book.title }}')">
+                                        <i class="fas fa-redo"></i> Renew
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Total Fine Summary -->
+            {% set total_fine = 0 %}
+            {% for issue in issued_books %}
+                {% set total_fine = total_fine + issue.calculate_fine() %}
+            {% endfor %}
+            {% if total_fine > 0 %}
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: var(--radius-sm); padding: 1rem; margin-top: 1rem;">
+                <div class="flex-between">
+                    <div>
+                        <strong style="color: var(--danger);"><i class="fas fa-exclamation-circle"></i> Total Outstanding Fine</strong>
+                        <p style="font-size: 0.875rem; color: var(--text-secondary);">Please return overdue books to avoid additional fines (₹5/day)</p>
+                    </div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: var(--danger);">
+                        ₹{{ total_fine }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-book-open"></i>
+                <h3>No books borrowed</h3>
+                <p>Browse our collection and reserve a book!</p>
+                <a href="{{ url_for('book_search') }}" class="btn btn-primary btn-sm mt-2">Browse Books</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-2">
+        <!-- Reservation History -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-calendar-check"></i> My Reservations</h3>
+            </div>
+            {% if reservations %}
+                {% for reservation in reservations[:5] %}
+                <div class="flex-between mb-2" style="padding: 0.75rem; background: var(--bg-secondary); border-radius: var(--radius-sm);">
+                    <div>
+                        <strong>{{ reservation.book.title }}</strong>
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">
+                            {{ reservation.request_date.strftime('%b %d, %Y') }}
+                        </p>
+                    </div>
+                    <span class="badge badge-{{ 'warning' if reservation.status == 'pending' else 'success' if reservation.status == 'approved' else 'danger' }}">
+                        {{ reservation.status|capitalize }}
+                    </span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-calendar-check"></i>
+                    <h3>No reservations yet</h3>
+                    <p>Reserve books from our catalog</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Renewal Requests History -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-history"></i> Renewal Requests</h3>
+            </div>
+            {% if renewal_requests %}
+                {% for renewal in renewal_requests[:5] %}
+                <div class="flex-between mb-2" style="padding: 0.75rem; background: var(--bg-secondary); border-radius: var(--radius-sm);">
+                    <div>
+                        <strong>{{ renewal.issued_book.book.title }}</strong>
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">
+                            {{ renewal.request_date.strftime('%b %d, %Y') }}
+                        </p>
+                    </div>
+                    <span class="badge badge-{{ 'warning' if renewal.status == 'pending' else 'success' if renewal.status == 'approved' else 'danger' }}">
+                        {{ renewal.status|capitalize }}
+                    </span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-redo"></i>
+                    <h3>No renewal requests</h3>
+                    <p>Request renewals for borrowed books</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card mt-3">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-bolt"></i> Quick Actions</h3>
+        </div>
+        <div class="flex gap-2" style="flex-wrap: wrap;">
+            <a href="{{ url_for('book_search') }}" class="btn btn-primary">
+                <i class="fas fa-search"></i> Browse Books
+            </a>
+            <a href="{{ url_for('book_search') }}" class="btn btn-secondary">
+                <i class="fas fa-filter"></i> Search by Category
+            </a>
+        </div>
+    </div>
+</main>
+
+<!-- Renewal Modal -->
+<div id="renewModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="card" style="max-width: 500px; width: 90%; margin: 2rem auto;">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-redo"></i> Request Book Renewal</h3>
+            <button type="button" onclick="closeRenewModal()" style="background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer;">
+                &times;
+            </button>
+        </div>
+        <form id="renewForm" method="POST" action="">
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Book: <strong id="renewBookTitle"></strong>
+            </p>
+            <div class="form-group">
+                <label class="form-label">Reason for Renewal *</label>
+                <textarea name="reason" class="form-control" rows="4" placeholder="Please explain why you need to extend the borrowing period..." required></textarea>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i> Submit Request
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeRenewModal()">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showRenewModal(issueId, bookTitle) {
+    document.getElementById('renewModal').style.display = 'flex';
+    document.getElementById('renewBookTitle').textContent = bookTitle;
+    document.getElementById('renewForm').action = '/student/renew/' + issueId;
+}
+
+function closeRenewModal() {
+    document.getElementById('renewModal').style.display = 'none';
+    document.getElementById('renewForm').reset();
+}
+
+// Close modal when clicking outside
+document.getElementById('renewModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeRenewModal();
+    }
+});
+</script>
+{% endblock %}

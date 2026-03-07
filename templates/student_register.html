@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Registration - School of Mines Library{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <i class="fas fa-user-plus" style="font-size: 3rem; color: var(--accent-primary); margin-bottom: 1rem;"></i>
+            <h2>Student Registration</h2>
+            <p>Create your account to access library services</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('student_register') }}">
+            <div class="form-group">
+                <label class="form-label">Full Name *</label>
+                <input type="text" name="full_name" class="form-control" placeholder="Enter your full name" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Branch *</label>
+                <select name="branch" class="form-control" required>
+                    <option value="">Select your branch</option>
+                    {% for branch in branches %}
+                        <option value="{{ branch }}">{{ branch }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Register Number *</label>
+                <input type="text" name="register_number" class="form-control" placeholder="Enter your register number" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Phone Number *</label>
+                <input type="tel" name="phone_number" class="form-control" placeholder="Enter your phone number" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password *</label>
+                <input type="password" name="password" class="form-control" placeholder="Create a password" required minlength="6">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <i class="fas fa-user-plus"></i> Register
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('student_login') }}">Login here</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

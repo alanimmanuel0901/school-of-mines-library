@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Login - School of Mines Library{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <i class="fas fa-user-shield" style="font-size: 3rem; color: var(--accent-primary); margin-bottom: 1rem;"></i>
+            <h2>Admin Login</h2>
+            <p>Sign in to access the admin dashboard</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('admin_login') }}">
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <input type="text" name="username" class="form-control" placeholder="Enter username" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Default credentials: admin / admin123</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
