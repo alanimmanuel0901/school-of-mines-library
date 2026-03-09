@@ -29,16 +29,6 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 db = SQLAlchemy(app)
 
-with app.app_context():
-    db.create_all()
-
-    # create default admin if not exists
-    if not Admin.query.filter_by(username="admin").first():
-        from werkzeug.security import generate_password_hash
-        admin = Admin(username="admin", password=generate_password_hash("admin123"))
-        db.session.add(admin)
-        db.session.commit()
-
 # Add now() function to Jinja2 context
 @app.context_processor
 def utility_processor():
