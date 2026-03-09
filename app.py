@@ -8,7 +8,17 @@ import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'library-management-secret-key-2024'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
+
+# Database configuration - Support both PostgreSQL (production) and SQLite (development)
+database_url = os.environ.get('DATABASE_URL')
+
+if database_url:
+    # Use PostgreSQL for production (Render)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    # Use SQLite for local development
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads/covers'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
