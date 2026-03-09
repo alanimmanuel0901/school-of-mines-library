@@ -848,18 +848,28 @@ def api_get_student_books(student_id):
 
 # Initialize Database
 def init_db():
+    """Initialize database tables and create default admin user."""
     with app.app_context():
+        # Create all database tables safely
         db.create_all()
+        
         # Create default admin if not exists
-        if not Admin.query.filter_by(username='admin').first():
+        admin = Admin.query.filter_by(username='admin').first()
+        if not admin:
             admin = Admin(
                 username='admin',
                 password=generate_password_hash('admin123')
             )
             db.session.add(admin)
             db.session.commit()
-            print("Default admin created: username='admin', password='admin123'")
+            print("✅ Default admin created: username='admin', password='admin123'")
+        else:
+            print("✅ Admin user already exists")
+        
+        print("✅ Database tables initialized successfully")
+
+# Initialize database when app starts (works with both Flask dev server and Gunicorn)
+init_db()
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True, port=5000)
