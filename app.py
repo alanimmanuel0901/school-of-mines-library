@@ -16,9 +16,9 @@ app.config['SECRET_KEY'] = 'library-management-secret-key-2024'
 database_url = os.environ.get('DATABASE_URL')
 
 if database_url:
-    # Render uses postgres:// but SQLAlchemy needs postgresql://
+    # Render uses postgres:// but SQLAlchemy needs postgresql:// with psycopg3
     if database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+        database_url = database_url.replace('postgres://', 'postgresql+psycopg://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
     # Use SQLite for local development
