@@ -5,6 +5,9 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from functools import wraps
 import os
+import cloudinary
+import cloudinary.uploader
+from cloudinary.utils import cloudinary_url
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'library-management-secret-key-2024'
@@ -24,6 +27,18 @@ else:
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads/covers'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Cloudinary Configuration
+cloudinary_url = os.environ.get('CLOUDINARY_URL')
+if cloudinary_url:
+    cloudinary.config(url=cloudinary_url)
+else:
+    # Local development - use placeholder or skip cloudinary
+    cloudinary.config(
+        cloud_name="your_cloud_name",
+        api_key="your_api_key",
+        api_secret="your_api_secret"
+    )
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -59,10 +74,10 @@ class Book(db.Model):
     author_born_year = db.Column(db.Integer)
     author_died_year = db.Column(db.Integer)  # Optional - None if still alive
     book_published_year = db.Column(db.Integer)
-    author_description = db.Column(db.Text)
+    author_description= db.Column(db.Text)
     isbn = db.Column(db.String(50), unique=True, nullable=False)
-    branch_category = db.Column(db.String(100), nullable=False)
-    cover_image = db.Column(db.String(200), default='default_book.png')
+    branch_category= db.Column(db.String(100), nullable=False)
+    cover_image = db.Column(db.String(500))  # Store Cloudinary URL (up to 500 chars)
     total_copies = db.Column(db.Integer, default=1)
     available_copies = db.Column(db.Integer, default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -206,14 +221,22 @@ def add_book():
             flash('A book with this ISBN already exists.', 'error')
             return redirect(url_for('add_book'))
         
-        # Handle file upload
-        cover_image = 'default_book.png'
+        # Handle file upload with Cloudinary
+        cover_image = None  # No cover by default
         if 'cover' in request.files:
             file = request.files['cover']
             if file and file.filename and allowed_file(file.filename):
-                filename = secure_filename(f"{isbn}_{file.filename}")
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                cover_image = filename
+                try:
+                    # Upload to Cloudinary
+                    upload_result = cloudinary.uploader.upload(
+                        file,
+                        folder='library-covers',
+                        public_id=f"book_{isbn}"
+                    )
+                    cover_image = upload_result['secure_url']
+                except Exception as e:
+                    flash(f'Failed to upload image: {str(e)}', 'error')
+                    return redirect(url_for('add_book'))
         
         new_book = Book(
             title=title,
@@ -286,17 +309,26 @@ def edit_book(book_id):
         if 'cover' in request.files:
             file = request.files['cover']
             if file and file.filename and allowed_file(file.filename):
-                # Delete old cover if it's not the default
-                if book.cover_image and book.cover_image != 'default_book.png':
-                    try:
-                        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], book.cover_image))
-                    except:
-                        pass
-                
-                # Save new cover
-                filename = secure_filename(f"{isbn}_{file.filename}")
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                cover_image = filename
+                try:
+                    # Upload new image to Cloudinary
+                    upload_result= cloudinary.uploader.upload(
+                        file,
+                        folder='library-covers',
+                        public_id=f"book_{isbn}"
+                    )
+                    cover_image = upload_result['secure_url']
+                    
+                    # Optionally delete old image from Cloudinary
+                  if book.cover_image and 'cloudinary.com' in book.cover_image:
+                        try:
+                            # Extract public_id from URL
+                            old_public_id = book.cover_image.split('/')[-1].split('.')[0]
+                            cloudinary.uploader.destroy(old_public_id)
+                        except:
+                            pass  # Ignore errors when deleting old image
+                except Exception as e:
+                   flash(f'Failed to upload image: {str(e)}', 'error')
+                    return redirect(url_for('edit_book', book_id=book_id))
         
         # Update book details
         book.title = title
