@@ -311,7 +311,7 @@ def edit_book(book_id):
             if file and file.filename and allowed_file(file.filename):
                 try:
                     # Upload new image to Cloudinary
-                    upload_result= cloudinary.uploader.upload(
+                    upload_result = cloudinary.uploader.upload(
                         file,
                         folder='library-covers',
                         public_id=f"book_{isbn}"
@@ -319,7 +319,7 @@ def edit_book(book_id):
                     cover_image = upload_result['secure_url']
                     
                     # Optionally delete old image from Cloudinary
-                  if book.cover_image and 'cloudinary.com' in book.cover_image:
+                    if book.cover_image and 'cloudinary.com' in book.cover_image:
                         try:
                             # Extract public_id from URL
                             old_public_id = book.cover_image.split('/')[-1].split('.')[0]
@@ -327,8 +327,8 @@ def edit_book(book_id):
                         except:
                             pass  # Ignore errors when deleting old image
                 except Exception as e:
-                   flash(f'Failed to upload image: {str(e)}', 'error')
-                    return redirect(url_for('edit_book', book_id=book_id))
+                  flash(f'Failed to upload image: {str(e)}', 'error')
+                  return redirect(url_for('edit_book', book_id=book_id))
         
         # Update book details
         book.title = title
