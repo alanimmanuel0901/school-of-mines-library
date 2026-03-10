@@ -34,13 +34,6 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 cloudinary_url = os.environ.get('CLOUDINARY_URL')
 if cloudinary_url:
     cloudinary.config(url=cloudinary_url)
-else:
-    # Local development - use placeholder or skip cloudinary
-    cloudinary.config(
-        cloud_name="your_cloud_name",
-        api_key="your_api_key",
-        api_secret="your_api_secret"
-    )
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
