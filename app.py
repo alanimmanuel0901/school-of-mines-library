@@ -31,9 +31,10 @@ app.config['UPLOAD_FOLDER'] = 'static/uploads/covers'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Cloudinary Configuration
-cloudinary_url = os.environ.get('CLOUDINARY_URL')
-if cloudinary_url:
-    cloudinary.config(url=cloudinary_url)
+cloudinary_env = os.environ.get('CLOUDINARY_URL')
+
+if cloudinary_env:
+    cloudinary.config(url=cloudinary_env)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
