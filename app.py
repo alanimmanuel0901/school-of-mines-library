@@ -197,28 +197,28 @@ def admin_dashboard():
 
 @app.route('/admin/add_book', methods=['GET', 'POST'])
 def add_book():
-  if request.method == 'POST':
+    if request.method == 'POST':
         title = request.form.get('title')
         author = request.form.get('author')
         author_born_year = request.form.get('author_born_year')
         author_died_year = request.form.get('author_died_year')
-      book_published_year = request.form.get('book_published_year')
-        author_description= request.form.get('author_description')
+        book_published_year = request.form.get('book_published_year')
+        author_description = request.form.get('author_description')
         isbn = request.form.get('isbn')
         branch_category = request.form.get('branch_category')
         total_copies = int(request.form.get('total_copies', 1))
         
         cover_image = None
-       file = request.files.get('cover')
-      
-      if file and file.filename and allowed_file(file.filename):
+        file = request.files.get('cover')
+        
+        if file and file.filename and allowed_file(file.filename):
             try:
-               filename = secure_filename(file.filename)
-              filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-              file.save(filepath)
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
                 cover_image = filename
             except Exception as e:
-               flash(f"Failed to save image: {str(e)}", "error")
+                flash(f"Failed to save image: {str(e)}", "error")
                 return redirect(url_for('add_book'))
         
         new_book = Book(
@@ -226,7 +226,7 @@ def add_book():
             author=author,
             author_born_year=author_born_year,
             author_died_year=author_died_year,
-          book_published_year=book_published_year,
+            book_published_year=book_published_year,
             author_description=author_description,
             isbn=isbn,
             branch_category=branch_category,
@@ -237,7 +237,7 @@ def add_book():
         
         db.session.add(new_book)
         db.session.commit()
-      flash("Book added successfully!", "success")
+        flash("Book added successfully!", "success")
         return redirect(url_for('add_book'))
     
     branches = ['Computer Science', 'Electronics', 'Mechanical', 'Civil', 'Electrical', 'General', 'Fiction', 'Science', 'Mathematics', 'History']
@@ -289,22 +289,22 @@ def edit_book(book_id):
             return redirect(url_for('edit_book', book_id=book_id))
         
         # Handle file upload
-cover_image = book.cover_image  # keep old image if no new upload
-
-if 'cover' in request.files:
-    file = request.files['cover']
-
-    if file and file.filename and allowed_file(file.filename):
-        try:
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-
-            cover_image = filename
-
-        except Exception as e:
-            flash(f'Failed to upload image: {str(e)}', 'error')
-            return redirect(url_for('edit_book', book_id=book_id))
+        cover_image = book.cover_image  # keep old image if no new upload
+        
+        if 'cover' in request.files:
+            file = request.files['cover']
+            
+            if file and file.filename and allowed_file(file.filename):
+                try:
+                    filename = secure_filename(file.filename)
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(filepath)
+                    
+                    cover_image = filename
+                    
+                except Exception as e:
+                    flash(f'Failed to upload image: {str(e)}', 'error')
+                    return redirect(url_for('edit_book', book_id=book_id))
         
         # Update book details
         book.title = title
