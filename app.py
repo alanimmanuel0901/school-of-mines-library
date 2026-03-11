@@ -31,10 +31,13 @@ app.config['UPLOAD_FOLDER'] = 'static/uploads/covers'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Cloudinary Configuration
-cloudinary_env = os.environ.get('CLOUDINARY_URL')
+import os
+import cloudinary
 
-if cloudinary_env:
-    cloudinary.config(url=cloudinary_env)
+cloudinary_url = os.environ.get("CLOUDINARY_URL")
+
+if cloudinary_url:
+    cloudinary.config(url=cloudinary_url)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -192,10 +195,10 @@ def admin_dashboard():
                          pending_renewals=pending_renewals,
                          recent_reservations=recent_reservations)
 
-@app.route('/admin/add-book', methods=['GET', 'POST'])
-@admin_required
+@app.route('/admin/add_book', methods=['GET', 'POST'])
 def add_book():
     if request.method == 'POST':
+
         title = request.form.get('title')
         author = request.form.get('author')
         author_born_year = request.form.get('author_born_year')
@@ -204,36 +207,22 @@ def add_book():
         author_description = request.form.get('author_description')
         isbn = request.form.get('isbn')
         branch_category = request.form.get('branch_category')
-        total_copies = int(request.form.get('total_copies', 1))
-        
-        # Convert year fields to integers (or None if empty)
-        author_born_year = int(author_born_year) if author_born_year else None
-        author_died_year = int(author_died_year) if author_died_year else None
-        book_published_year = int(book_published_year) if book_published_year else None
-        
-        # Check if ISBN already exists
-        existing_book = Book.query.filter_by(isbn=isbn).first()
-        if existing_book:
-            flash('A book with this ISBN already exists.', 'error')
-            return redirect(url_for('add_book'))
-        
-        # Handle file upload with Cloudinary
-        cover_image = None  # No cover by default
-        if 'cover' in request.files:
-            file = request.files['cover']
-            if file and file.filename and allowed_file(file.filename):
-                try:
-                    # Upload to Cloudinary
-                    upload_result = cloudinary.uploader.upload(
-                        file,
-                        folder='library-covers',
-                        public_id=f"book_{isbn}"
-                    )
-                    cover_image = upload_result['secure_url']
-                except Exception as e:
-                    flash(f'Failed to upload image: {str(e)}', 'error')
-                    return redirect(url_for('add_book'))
-        
+        total_copies = int(request.form.get('total_copies'))
+
+        cover_image = None
+
+        file = request.files.get('cover')
+
+        if file and file.filename:
+            try:
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                cover_image = filename
+            except Exception as e:
+                flash(f"Failed to save image: {str(e)}", "error")
+                return redirect(url_for('add_book'))
+
         new_book = Book(
             title=title,
             author=author,
@@ -247,12 +236,14 @@ def add_book():
             total_copies=total_copies,
             available_copies=total_copies
         )
+
         db.session.add(new_book)
         db.session.commit()
-        flash('Book added successfully!', 'success')
+
+        flash("Book added successfully!", "success")
         return redirect(url_for('add_book'))
-    
-    branches = ['Computer Science', 'Electronics', 'Mechanical', 'Civil', 'Electrical', 'General', 'Fiction', 'Science', 'Mathematics', 'History']
+
+    branches = ['Computer Science', 'Electronics', 'Mechanical', 'Civil', 'Electrical']
     return render_template('add_book.html', branches=branches)
 
 @app.route('/admin/books')
