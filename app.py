@@ -220,14 +220,27 @@ def add_book():
         cover_image = None
         file = request.files.get('cover')
         
+        # Handle file upload - Use Cloudinary if available, otherwise local storage
         if file and file.filename and allowed_file(file.filename):
             try:
-                filename = secure_filename(file.filename)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-                cover_image = filename
+                if CLOUDINARY_AVAILABLE and cloudinary_url:
+                    # Upload to Cloudinary for persistent storage on Render
+                    upload_result = cloudinary.uploader.upload(
+                        file,
+                        folder='library-covers',
+                        resource_type='image'
+                    )
+                    cover_image = upload_result['secure_url']
+                    print(f"✅ Image uploaded to Cloudinary: {cover_image}")
+                else:
+                    # Fallback to local storage (for development or if Cloudinary not configured)
+                    filename = secure_filename(file.filename)
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(filepath)
+                    cover_image = filename
+                    print(f"✅ Image saved locally: {cover_image}")
             except Exception as e:
-                flash(f"Failed to save image: {str(e)}", "error")
+                flash(f"Failed to upload image: {str(e)}", "error")
                 return redirect(url_for('add_book'))
         
         new_book = Book(
@@ -305,11 +318,22 @@ def edit_book(book_id):
             
             if file and file.filename and allowed_file(file.filename):
                 try:
-                    filename = secure_filename(file.filename)
-                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    file.save(filepath)
-                    
-                    cover_image = filename
+                    if CLOUDINARY_AVAILABLE and cloudinary_url:
+                        # Upload to Cloudinary for persistent storage on Render
+                        upload_result = cloudinary.uploader.upload(
+                            file,
+                            folder='library-covers',
+                            resource_type='image'
+                        )
+                        cover_image = upload_result['secure_url']
+                        print(f"✅ Image uploaded to Cloudinary: {cover_image}")
+                    else:
+                        # Fallback to local storage (for development or if Cloudinary not configured)
+                        filename = secure_filename(file.filename)
+                        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                        file.save(filepath)
+                        cover_image = filename
+                        print(f"✅ Image saved locally: {cover_image}")
                     
                 except Exception as e:
                     flash(f'Failed to upload image: {str(e)}', 'error')
