@@ -5,39 +5,48 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from functools import wraps
 import os
-import cloudinary
-import cloudinary.uploader
-from cloudinary.utils import cloudinary_url
+
+# Import Cloudinary only if available
+try:
+    import cloudinary
+    import cloudinary.uploader
+    from cloudinary.utils import cloudinary_url
+    CLOUDINARY_AVAILABLE = True
+except ImportError:
+    CLOUDINARY_AVAILABLE = False
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'library-management-secret-key-2024'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'library-management-secret-key-2024')
 
 # Database configuration - Support both PostgreSQL (production) and SQLite (development)
 database_url = os.environ.get('DATABASE_URL')
 
 if database_url:
     # Render uses postgres:// but SQLAlchemy needs postgresql:// with psycopg3
- if database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql+psycopg://', 1)
- elif database_url.startswith('postgresql://'):
-    database_url = database_url.replace('postgresql://', 'postgresql+psycopg://', 1)
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql+psycopg://', 1)
+    elif database_url.startswith('postgresql://'):
+        database_url = database_url.replace('postgresql://', 'postgresql+psycopg://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
     # Use SQLite for local development
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'library.db')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads/covers'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-# Cloudinary Configuration
-import os
-import cloudinary
-
-cloudinary_url = os.environ.get("CLOUDINARY_URL")
-
-if cloudinary_url:
-    cloudinary.config(url=cloudinary_url)
+# Cloudinary Configuration - Safe fallback if not configured
+if CLOUDINARY_AVAILABLE:
+    cloudinary_url = os.environ.get("CLOUDINARY_URL")
+    if cloudinary_url:
+        cloudinary.config(url=cloudinary_url)
+        print("✅ Cloudinary configured successfully")
+    else:
+        print("⚠️  CLOUDINARY_URL not set. Using local file storage.")
+else:
+    print("⚠️  Cloudinary not installed. Using local file storage.")
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -854,9 +863,9 @@ def api_get_student_books(student_id):
         'total_books': len(reservations_list) + len(issued_books_list)
     }), 200
 
-# Initialize Database
-def init_db():
-    """Initialize database tables and create default admin user."""
+# Initialize Database and Application
+def init_app():
+    """Initialize the application with database and required directories."""
     with app.app_context():
         # Create all database tables safely
         db.create_all()
@@ -874,10 +883,18 @@ def init_db():
         else:
             print("✅ Admin user already exists")
         
+        # Ensure upload folder exists
+        upload_folder = app.config['UPLOAD_FOLDER']
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder, exist_ok=True)
+            print(f"✅ Upload folder created: {upload_folder}")
+        else:
+            print(f"✅ Upload folder exists: {upload_folder}")
+        
         print("✅ Database tables initialized successfully")
 
-# Initialize database when app starts (works with both Flask dev server and Gunicorn)
-init_db()
+# Initialize app when module loads
+init_app()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
